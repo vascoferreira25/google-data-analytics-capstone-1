@@ -1,0 +1,13 @@
+[book]
+title = "Google Data Analytics Capstone 1"
+author = "Vasco Ferreira"
+description = "The capstone for the course Google Data Analytics on Coursera."
+language = "en"
+multilingual = false
+src = "docs"
+
+[build]
+build-dir = "docs/build"
+
+[output.html]
+additional-css = ["docs/css/styles.css"]

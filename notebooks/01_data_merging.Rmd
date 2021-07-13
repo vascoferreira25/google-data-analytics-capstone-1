@@ -1,0 +1,105 @@
+---
+title: "01 - Data Merging"
+author: "Vasco Ferreira"
+date: "7/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries needed
+
+```{r}
+library(tidyverse)
+```
+
+## Load the data files
+
+By inspecting the files, the `start_station_id` and the `end_station_id`change 
+from being a numerical ID to alpha-numeric. As such, transform all the columns 
+to the `character` type to avoid errors when combining the data into a single 
+dataframe.
+
+```{r}
+col_types = list(
+  col_character(), # id
+  col_datetime(format = "%Y-%m-%d %H:%M:%S"), # start
+  col_datetime(format = "%Y-%m-%d %H:%M:%S"), # end
+  col_double(), # bike id
+  col_number(), # trip duration
+  col_double(), # from station id
+  col_character(), # from station name
+  col_double(), # to station id
+  col_character(), # to station name
+  col_character(), # user type
+  col_character(), # gender
+  col_double() # birth year
+)
+```
+
+As there are files with different column names, define the columns names when
+loading the files:
+
+```{r}
+col_names <- c(
+  "trip_id",
+  "start_time",
+  "end_time",
+  "bikeid",
+  "tripduration",
+  "from_station_id",
+  "from_station_name",
+  "to_station_id",
+  "to_station_name",
+  "usertype",
+  "gender",
+  "birthyear"
+)
+```
+
+
+The dates of the files go from `2019-Q1` to `2019-Q4` so, load all the files and
+concatenate the dataframes to make a single dataframe with all the trip data and
+skip the header row.
+
+```{r}
+tripdata_q2 <- read_csv("../data/raw/Divvy_trips_2019_Q2.csv", 
+                        col_types = col_types,
+                        col_names = col_names,
+                        skip = 1)
+
+tripdata_q3 <- read_csv("../data/raw/Divvy_trips_2019_Q3.csv", 
+                        col_types = col_types,
+                        col_names = col_names,
+                        skip = 1)
+
+tripdata_q4 <- read_csv("../data/raw/Divvy_trips_2019_Q4.csv", 
+                        col_types = col_types,
+                        col_names = col_names,
+                        skip = 1)
+
+tripdata_q5 <- read_csv("../data/raw/Divvy_trips_2020_Q1.csv", 
+                        col_types = col_types,
+                        col_names = col_names,
+                        skip = 1)
+```
+
+```{r}
+tripdata <- bind_rows(tripdata_q1, tripdata_q2, tripdata_q3, tripdata_q4)
+```
+
+
+Check the new dataframe.
+
+```{r}
+tripdata
+```
+
+Save the data to a csv file.
+
+```{r}
+write_csv(tripdata, "../data/processed/01_tripdata.csv")
+```
+

@@ -1,0 +1,131 @@
+---
+title: "02_data_cleaning"
+author: "Vasco Ferreira"
+date: "7/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries needed
+
+```{r}
+library(tidyverse)
+```
+
+## Load the data
+
+```{r}
+tripdata <- read_csv("../data/processed/01_tripdata.csv")
+```
+
+## Check the data
+
+```{r}
+summary(tripdata)
+```
+
+## Clean the data
+
+### Trip duration
+
+By checking the the summary of the data, we can see that at least the 
+`tripduration` probably has bad data as the maximum value is `10628400`, which
+is much greated than the other values. Fortunately we can calculate the trip 
+duration by subtracting the `end_time` by the `start_time` and use it as a
+validation for the `start_time` and `end_times` columns.
+
+```{r}
+cleaned_tripdata <- tripdata %>% 
+  mutate(calculated_tripduration = as.numeric(difftime(end_time, 
+                                                       start_time, 
+                                                       units = "secs")))
+```
+
+```{r}
+summary(cleaned_tripdata)
+```
+
+With this summary we can see that there is indeed bad data as there are
+negative values that implies that either the time is going backwards or
+swapped values between the `start_time` and the `end_time`.
+
+```{r}
+fixed_rows <- cleaned_tripdata %>% 
+  filter(calculated_tripduration <= 0) %>% 
+  mutate(temp = start_time) %>% 
+  mutate(start_time = end_time, end_time = temp) %>% 
+  select(-temp)
+
+cleaned_tripdata <- cleaned_tripdata %>% 
+  filter(calculated_tripduration > 0) %>% 
+  bind_rows(fixed_rows) %>% 
+  mutate(calculated_tripduration = as.numeric(difftime(end_time, 
+                                                       start_time, 
+                                                       units = "secs")))
+```
+
+Check to see if the negative numbers are fixed:
+
+```{r}
+summary(cleaned_tripdata)
+```
+
+
+Let's check why the maximum value is so high:
+
+```{r}
+cleaned_tripdata %>% 
+  filter(calculated_tripduration > 10000000)
+```
+
+By checking the data, the maximum value of the `calculated_tripduration` is
+so great because the client kept the bike by several months. This means
+that the isn't bad data.
+
+### Gender
+
+Let's check if the `gender` column data is correctly formatted:
+
+```{r}
+cleaned_tripdata %>% 
+  ggplot() +
+    geom_bar(aes(gender))
+```
+
+There seems to be no bad data in the `gender` column.
+
+### User type
+
+By checking the `usertype` column we can also see that there doesn't seem
+to exist any bad data.
+
+```{r}
+cleaned_tripdata %>% 
+  ggplot() +
+    geom_bar(aes(usertype))
+```
+
+As this is a fictional company and we are using data of a real company, we have
+to adapt the data to our case. In this case, the exercise uses different names
+for the 2 types of customers. We need to change that:
+
+```{r}
+cleaned_tripdata <- cleaned_tripdata %>% 
+  mutate(member_casual = recode(usertype,
+                                "Subscriber" = "member",
+                                "Customer" = "casual"))
+```
+
+
+## Save the cleaned data
+
+As we checked the data and cleaned what seemed to be bad data, we now save
+the data and use it in the next steps of the data analysis.
+
+```{r}
+write_csv(cleaned_tripdata, "../data/processed/02_tripdata.csv")
+```
+

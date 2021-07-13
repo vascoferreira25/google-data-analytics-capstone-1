@@ -1,0 +1,58 @@
+---
+title: "Report"
+author: "Vasco Ferreira"
+date: "7/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This data analytics report is one the Capstone Exercises for the Google Data
+Analytics Course on Coursera. This case study is about a bike-sharing company
+that aims to increase the number of annual members (subscribers) as these type 
+of members are the most profitable for the company.
+
+Information about the company:
+
+- 5800 bikes
+- 600 docking stations
+- different types of bikes:
+  - traditional bikes
+  - reclining bikes
+  - hand tricycles
+  - cargo bikes
+- 92% of members use traditional bikes
+- 8% of members use the other types of bikes
+- 70% of members use bikes for leisure
+- 30% of members use bikes for commuting
+
+## Load libraries and data
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+tripdata <- read_csv("../data/processed/02_tripdata.csv")
+```
+
+
+## Ask
+
+The task is to answer the first question of the new marketing program:
+
+> How do annual members and casual riders use Cyclistic bikes differently?
+
+```{r}
+tripdata %>% 
+  drop_na(usertype) %>% 
+  group_by(usertype) %>% 
+  summarize(average_trip_duration = mean(calculated_tripduration), 
+            std_deviation = sd(calculated_tripduration),
+            min_trip_duration = min(calculated_tripduration),
+            max_trip_duration = max(calculated_tripduration))
+```
+
+In general, the
