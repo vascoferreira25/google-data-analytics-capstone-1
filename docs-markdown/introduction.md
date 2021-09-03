@@ -40,7 +40,6 @@ To reproduce this project, run the `R notebooks` in the following order:
 1. Data Merging
 2. Data Cleaning
 3. Report
-4. Conclusion
 
 ---
 
