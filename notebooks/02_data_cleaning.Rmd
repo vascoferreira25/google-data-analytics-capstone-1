@@ -13,12 +13,35 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+
+# Used to apply functions in parallel to rows
+library(purrr)
+
+# Used to calculate distances with latitude and longitude
+library(geosphere)
 ```
 
 ## Load the data
 
 ```{r}
-tripdata <- read_csv("../data/processed/01_tripdata.csv")
+# Use the column types to avoid parsing errors
+col_types = list(
+  col_character(),
+  col_character(),
+  col_datetime(),
+  col_datetime(),
+  col_character(),
+  col_character(),
+  col_character(),
+  col_character(),
+  col_double(),
+  col_double(),
+  col_double(),
+  col_double(),
+  col_character()
+)
+
+tripdata <- read_csv("../data/processed/01_tripdata.csv", col_types = col_types)
 ```
 
 ## Check the data
@@ -31,40 +54,38 @@ summary(tripdata)
 
 ### Trip duration
 
-By checking the the summary of the data, we can see that at least the 
-`tripduration` probably has bad data as the maximum value is `10628400`, which
-is much greated than the other values. Fortunately we can calculate the trip 
-duration by subtracting the `end_time` by the `start_time` and use it as a
-validation for the `start_time` and `end_times` columns.
+Calculate the trip duration to check if there are `started_at` and `ended_at`
+dates that are swapped and check the summary of the data:
 
 ```{r}
 cleaned_tripdata <- tripdata %>% 
-  mutate(calculated_tripduration = as.numeric(difftime(end_time, 
-                                                       start_time, 
-                                                       units = "secs")))
-```
+  mutate(trip_duration = as.numeric(difftime(ended_at, 
+                                             started_at, 
+                                             units = "secs")))
 
-```{r}
 summary(cleaned_tripdata)
 ```
 
-With this summary we can see that there is indeed bad data as there are
-negative values that implies that either the time is going backwards or
-swapped values between the `start_time` and the `end_time`.
+By checking the the summary of the data, we can see that at least the 
+`trip_duration` probably has bad data as the maximum value is `3523202`, which
+is much greater than the average value and that there are negative values that 
+implies that either the time is going backwards or swapped values between the 
+`started_at` and the `ended_at`.
 
 ```{r}
 fixed_rows <- cleaned_tripdata %>% 
-  filter(calculated_tripduration <= 0) %>% 
-  mutate(temp = start_time) %>% 
-  mutate(start_time = end_time, end_time = temp) %>% 
+  filter(trip_duration <= 0) %>% 
+  arrange(trip_duration) %>% 
+  mutate(temp = started_at) %>% 
+  mutate(started_at = ended_at, ended_at = temp) %>% 
   select(-temp)
 
 cleaned_tripdata <- cleaned_tripdata %>% 
-  filter(calculated_tripduration > 0) %>% 
+  filter(trip_duration > 0) %>% 
   bind_rows(fixed_rows) %>% 
-  mutate(calculated_tripduration = as.numeric(difftime(end_time, 
-                                                       start_time, 
-                                                       units = "secs")))
+  mutate(trip_duration = as.numeric(difftime(ended_at, 
+                                             started_at, 
+                                             units = "secs")))
 ```
 
 Check to see if the negative numbers are fixed:
@@ -73,29 +94,16 @@ Check to see if the negative numbers are fixed:
 summary(cleaned_tripdata)
 ```
 
-
 Let's check why the maximum value is so high:
 
 ```{r}
 cleaned_tripdata %>% 
-  filter(calculated_tripduration > 10000000)
+  filter(trip_duration > 1000000)
 ```
 
-By checking the data, the maximum value of the `calculated_tripduration` is
-so great because the client kept the bike by several months. This means
-that the isn't bad data.
-
-### Gender
-
-Let's check if the `gender` column data is correctly formatted:
-
-```{r}
-cleaned_tripdata %>% 
-  ggplot() +
-    geom_bar(aes(gender))
-```
-
-There seems to be no bad data in the `gender` column.
+By checking the data, the maximum value of the `trip_duration` is
+so great because the client kept the bike for more than a month. This means
+that there isn't bad data.
 
 ### User type
 
@@ -105,22 +113,66 @@ to exist any bad data.
 ```{r}
 cleaned_tripdata %>% 
   ggplot() +
-    geom_bar(aes(usertype))
+    geom_bar(aes(member_casual))
 ```
 
-As this is a fictional company and we are using data of a real company, we have
-to adapt the data to our case. In this case, the exercise uses different names
-for the 2 types of customers. We need to change that:
+## Stations
+
+Check if there is missing or bad data in the station names
 
 ```{r}
-cleaned_tripdata <- cleaned_tripdata %>% 
-  mutate(member_casual = recode(usertype,
-                                "Subscriber" = "member",
-                                "Customer" = "casual"))
+cleaned_tripdata %>% 
+  group_by(start_station_id) %>% 
+  summarize(number_trips = n(),
+            average_duration = mean(trip_duration),
+            deviation = sd(trip_duration),
+            min_duration = min(trip_duration),
+            max_duration = max(trip_duration)) %>% 
+  arrange(-number_trips)
 ```
 
+Let's keep the data that have at least the latitude and longitude so we
+can calculate the distance traveled by customers.
+
+```{r}
+cleaned_tripdata <- cleaned_tripdata %>%  
+  filter(!is.na(start_lat) & !is.na(end_lat))
+```
+
+### Distance traveled
+
+Calculate the distance traveled as it can be useful in the analysis (**this code
+takes a while to run**)
+
+```{r}
+calculate_distance <- function(lon1, lat1, lon2, lat2) {
+  dist <- distm(c(lon1, lat1), c(lon2, lat2), fun = distHaversine)
+  return(dist)
+}
+
+cleaned_tripdata <- cleaned_tripdata %>% 
+  mutate(distance_traveled = pmap_dbl(list(start_lat, start_lng, end_lat, end_lng), calculate_distance))
+```
+
+Check for negative distances
+
+```{r}
+cleaned_tripdata %>% 
+  filter(distance_traveled < 0)
+```
 
 ## Save the cleaned data
+
+Check the columns to be saved:
+
+```{r}
+colnames(cleaned_tripdata)
+```
+
+```{r}
+str(cleaned_tripdata)
+```
+
 
 As we checked the data and cleaned what seemed to be bad data, we now save
 the data and use it in the next steps of the data analysis.

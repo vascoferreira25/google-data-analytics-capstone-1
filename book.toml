@@ -11,3 +11,4 @@ build-dir = "docs/build"
 
 [output.html]
 additional-css = ["docs/css/styles.css"]
+mathjax-support = true

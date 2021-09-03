@@ -32,27 +32,207 @@ Information about the company:
 
 ```{r}
 library(tidyverse)
+library(lubridate)
+library(tidyquant) 
 ```
+
+Define the types for the data as the parser only looks for the first rows
+and there is data with a new format in the later rows:
 
 ```{r}
-tripdata <- read_csv("../data/processed/02_tripdata.csv")
+col_types = list(
+  col_character(),
+  col_character(),
+  col_datetime(),
+  col_datetime(),
+  col_character(),
+  col_character(),
+  col_character(),
+  col_character(),
+  col_double(),
+  col_double(),
+  col_double(),
+  col_double(),
+  col_character(),
+  col_double(),
+  col_double()
+)
 ```
 
+Load the data:
 
-## Ask
+```{r}
+tripdata <- read_csv("../data/processed/02_tripdata.csv", col_types = col_types)
+```
 
 The task is to answer the first question of the new marketing program:
 
 > How do annual members and casual riders use Cyclistic bikes differently?
 
+## How many users have a membership status?
+
+To answer this question we need to first group the data by each member type
+and then calculate some basic descriptive statistics:
+
 ```{r}
 tripdata %>% 
-  drop_na(usertype) %>% 
-  group_by(usertype) %>% 
-  summarize(average_trip_duration = mean(calculated_tripduration), 
-            std_deviation = sd(calculated_tripduration),
-            min_trip_duration = min(calculated_tripduration),
-            max_trip_duration = max(calculated_tripduration))
+  drop_na(member_casual) %>%  
+  ggplot() +
+    geom_bar(aes(member_casual, y=stat(count/sum(count)), fill=member_casual)) +
+    ylab("Percentage of users") +
+    xlab("Type of user") +
+    labs(title="How many of our users have a membership status?")
 ```
 
-In general, the
+In this graph we can see that almost 60% of our users have a membership
+status.
+
+## What is the most used type of bike?
+
+```{r}
+tripdata %>% 
+  drop_na(member_casual, rideable_type) %>%  
+  ggplot() +
+    geom_bar(aes(rideable_type, y=stat(count/sum(count)), fill=rideable_type)) +
+    facet_wrap(~member_casual) +
+    ylab("Percentage of users") +
+    xlab("Type of bike") +
+    labs(title="What type of bike do our users use the most")
+```
+
+Both types of users use the `docked bike` the most but, the `member` users
+use the `classic bike` more than the `electrict bike`. The `casual` users prefer
+the `electric bike` over the `classic bike`
+
+## For how long do our users travel?
+
+```{r}
+tripdata %>% 
+  drop_na(member_casual, trip_duration) %>% 
+  filter(trip_duration > 0, trip_duration < 7500) %>% 
+  ggplot() +
+    geom_histogram(aes(x=trip_duration, y = stat(count / sum(count)), fill=member_casual)) +
+    facet_wrap(~member_casual) +
+    ylab("Percentage of users") +
+    xlab("Trip duration in seconds") +
+    labs(title="Distribution of trip duration by user type")
+```
+
+```{r}
+tripdata %>% 
+  drop_na(member_casual, trip_duration) %>%
+  ggplot() +
+    geom_boxplot(aes(trip_duration, fill=member_casual)) +
+    coord_cartesian(xlim=c(0, 2500)) +
+    ylab("Percentage of users") +
+    xlab("Trip duration in seconds") +
+    labs(title="Distribution of trip duration by user type")
+```
+
+The average `casual` user spends double of the
+time of a `member` during a trip, 20 minutes versus 11 minutes. And that
+the trip duration is more spread out among `casual` members. This could be a
+demonstration of the majority of the users using bike for leisure trips as
+indicated in basic information.
+
+## How far do our users travel?
+
+Although the distance calculated through the latitude and longitude isn't the
+most accurate representation of the distance traveled as trips may not be in
+a straight line, it is the only representation that we currently have.
+
+```{r}
+tripdata %>% 
+  drop_na(member_casual, distance_traveled) %>% 
+  filter(distance_traveled > 0, distance_traveled < 10000) %>% 
+  ggplot() +
+    geom_histogram(aes(x=distance_traveled, y = stat(count / sum(count)), fill=member_casual)) +
+    facet_wrap(~member_casual) +
+    ylab("Percentage of users") +
+    xlab("Distance traveled in meters") +
+    labs(title="Distribution of distance traveled by user type")
+```
+
+```{r}
+tripdata %>% 
+  drop_na(member_casual, distance_traveled) %>%  
+  ggplot() +
+    geom_boxplot(aes(distance_traveled, fill=member_casual)) +
+    coord_cartesian(xlim=c(0, 2500)) +
+    ylab("Percentage of users") +
+    xlab("Distance traveled in meters") +
+    labs(title="Distribution of distance traveled by user type")
+```
+
+The average `casual` and `member` users
+travel about the same distance, however, the `member` users' shorter trips are longer
+than the `casual` users'.
+
+## When do our users travel?
+
+```{r}
+tripdata %>% 
+  mutate(weekday = weekdays(started_at, abbreviate = TRUE)) %>%
+  mutate(weekday_sorted = factor(weekday, levels=c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))) %>% 
+  drop_na(member_casual, weekday_sorted) %>%
+  ggplot() +
+    geom_bar(aes(weekday_sorted, y = stat(count / sum(count)), fill=member_casual)) +
+    facet_wrap(~member_casual) +
+    xlab("Weekday") +
+    ylab("Percentage of users") +
+    labs(title="Users per day of week")
+```
+
+In this graph we notice that `member` users most probably use our bikes
+for commuting during the week as oposed to `casual` members who use our bikes
+more at weekends.
+
+## How many users do we have through the year?
+
+```{r}
+tripdata %>% 
+  mutate(year = year(started_at),
+         month = month(started_at),
+         day = day(started_at),
+         date = date(started_at)) %>%
+  drop_na(member_casual, date) %>% 
+  group_by(date, member_casual) %>%
+  arrange(date) %>%
+  summarize(number_users = n()) %>%
+  ggplot() +
+    geom_ma(aes(date, number_users, color=member_casual), n=14, linetype="solid") +
+    xlab("Date") +
+    ylab("Number of users") +
+    labs(title="Number of users over the year (14 days moving average)")
+```
+
+```{r}
+tripdata %>% 
+  mutate(year = year(started_at),
+         month = month(started_at),
+         day = day(started_at),
+         date = date(started_at)) %>%
+  drop_na(member_casual, date) %>% 
+  group_by(date, member_casual) %>%
+  arrange(date) %>%
+  summarize(average_duration = mean(distance_traveled)) %>%
+  ggplot() +
+    geom_ma(aes(date, average_duration, color=member_casual), n=14, linetype="solid") +
+    xlab("Date") +
+    ylab("Distance in meters") +
+    labs(title="Average distance traveled over the year (14 days moving average)")
+```
+
+
+It is very difficult to draw conclusions from this graph for the simple fact 
+that this is not a normal year as the world was affected by COVID-19 and 
+COVID-19 also has trends. However, we can clearly see a trend in users over the 
+year so that in the summer there are more users than in the rest of year.
+
+## Conclusion
+
+
+
+
+
+

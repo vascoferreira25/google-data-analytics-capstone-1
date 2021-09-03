@@ -1,7 +1,5 @@
 # Introduction
 
-Introduction to `Google Data Analytics Capstone 1`.
-
 The capstone for the course Google Data Analytics on Coursera.
 
 ## Project structure
@@ -35,21 +33,16 @@ The directory structure of this project looks like this:
 ├── book.toml          <- Settings for mdBook
 ```
 
-## Include files
+## Steps
 
-You can include files by adding a code block and writing
+To reproduce this project, run the `R notebooks` in the following order:
 
-````
-```
-\{{#include ../google_data_analytics_capstone_1.Rproj}}
-```
-````
+1. Data Merging
+2. Data Cleaning
+3. Report
+4. Conclusion
 
-### This is how it looks
-
-```
-{{#include ../google_data_analytics_capstone_1.Rproj}}
-```
+---
 
 Written by Vasco Ferreira.
 
