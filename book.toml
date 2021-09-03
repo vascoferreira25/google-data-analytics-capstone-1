@@ -4,11 +4,11 @@ author = "Vasco Ferreira"
 description = "The capstone for the course Google Data Analytics on Coursera."
 language = "en"
 multilingual = false
-src = "docs"
+src = "docs-markdown"
 
 [build]
-build-dir = "docs/build"
+build-dir = "docs"
 
 [output.html]
-additional-css = ["docs/css/styles.css"]
+additional-css = ["docs-markdown/css/styles.css"]
 mathjax-support = true
