@@ -2,6 +2,9 @@
 
 The capstone for the course Google Data Analytics on Coursera.
 
+You can check the report by going to the
+[docs](https://vascoferreira25.github.io/google-data-analytics-capstone-1/).
+
 ## Project Organization
 
 ```
